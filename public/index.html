@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>imagerbls.ic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --border: #1f1f1f;
+      --border-hover: #333;
+      --accent: #e8ff47;
+      --accent-dim: rgba(232, 255, 71, 0.08);
+      --accent-glow: rgba(232, 255, 71, 0.15);
+      --text: #f0f0f0;
+      --muted: #555;
+      --muted2: #888;
+      --danger: #ff4747;
+      --success: #47ff8c;
+    }
+
+    html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; }
+    body { display: flex; flex-direction: column; }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; position: relative; z-index: 1; }
+
+    .wordmark { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(2.2rem, 6vw, 3.5rem); letter-spacing: -0.04em; color: var(--accent); margin-bottom: 0.35rem; text-shadow: 0 0 40px var(--accent-glow); }
+    .tagline { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted2); margin-bottom: 3.5rem; }
+
+    #drop-zone { width: 100%; max-width: 560px; border: 1.5px dashed var(--border-hover); border-radius: 12px; padding: 3.5rem 2rem; text-align: center; cursor: pointer; transition: all 0.25s ease; position: relative; background: var(--surface); }
+    #drop-zone:hover, #drop-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 4px var(--accent-glow), inset 0 0 60px var(--accent-dim); }
+    #drop-zone.drag-over .drop-icon { transform: translateY(-4px) scale(1.1); }
+    .drop-icon { font-size: 2.8rem; margin-bottom: 1.2rem; display: block; transition: transform 0.25s ease; filter: grayscale(1); }
+    #drop-zone:hover .drop-icon, #drop-zone.drag-over .drop-icon { filter: grayscale(0); }
+    .drop-label { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 0.5rem; }
+    .drop-sub { font-size: 0.72rem; color: var(--muted2); letter-spacing: 0.05em; }
+    .drop-sub span { color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    #file-input { display: none; }
+
+    #progress-wrap { width: 100%; max-width: 560px; margin-top: 1.5rem; display: none; }
+    #progress-wrap.visible { display: block; }
+    .progress-label { font-size: 0.7rem; color: var(--muted2); letter-spacing: 0.1em; margin-bottom: 0.5rem; text-transform: uppercase; }
+    .progress-bar-track { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; box-shadow: 0 0 8px var(--accent); }
+
+    #result-card { width: 100%; max-width: 560px; margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: none; animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    #result-card.visible { display: block; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .result-preview { width: 100%; max-height: 240px; object-fit: contain; background: #0e0e0e; display: block; }
+    .result-body { padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .result-url { flex: 1; font-size: 0.72rem; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .copy-btn { flex-shrink: 0; background: var(--accent); color: #0a0a0a; border: none; border-radius: 6px; padding: 0.45rem 0.9rem; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease; }
+    .copy-btn:hover { opacity: 0.85; }
+    .copy-btn.copied { background: var(--success); }
+
+    #toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1.2rem; font-size: 0.75rem; color: var(--muted2); opacity: 0; pointer-events: none; transition: all 0.3s ease; white-space: nowrap; z-index: 100; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error { color: var(--danger); border-color: var(--danger); }
+    #toast.success { color: var(--success); border-color: var(--success); }
+
+    #upload-another { margin-top: 1rem; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted2); font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: all 0.2s; display: none; }
+    #upload-another:hover { border-color: var(--accent); color: var(--accent); }
+    #upload-another.visible { display: block; }
+
+    footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 1.1rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .footer-left { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.05em; }
+    .footer-left strong { font-family: 'Syne', sans-serif; color: var(--muted2); }
+    .footer-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    footer a { font-size: 0.68rem; color: var(--muted); text-decoration: none; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: color 0.2s, border-color 0.2s; }
+    footer a:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── CONSENT BANNER ── */
+    #consent-banner {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(140%);
+      z-index: 999;
+      background: var(--surface);
+      border: 1px solid var(--border-hover);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      width: min(520px, calc(100vw - 2rem));
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #consent-banner.visible { transform: translateX(-50%) translateY(0); }
+
+    .consent-top { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .consent-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .consent-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; color: var(--text); margin-bottom: 0.35rem; }
+    .consent-text { font-size: 0.7rem; color: var(--muted2); line-height: 1.6; }
+    .consent-text a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(232,255,71,0.3); }
+    .consent-text a:hover { border-color: var(--accent); }
+
+    .consent-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+    .btn-decline { background: none; border: 1px solid var(--border-hover); border-radius: 6px; color: var(--muted2); font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.45rem 0.9rem; cursor: pointer; transition: all 0.2s; }
+    .btn-decline:hover { border-color: var(--danger); color: var(--danger); }
+
+    .btn-accept { background: var(--accent); border: none; border-radius: 6px; color: #0a0a0a; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.45rem 1.1rem; cursor: pointer; transition: all 0.2s; }
+    .btn-accept:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+
+<main>
+  <div class="wordmark">imagerbls.ic</div>
+  <div class="tagline">image hosting service &mdash; fast &amp; simple</div>
+
+  <div id="drop-zone" role="button" tabindex="0" aria-label="Upload image">
+    <span class="drop-icon">🖼️</span>
+    <div class="drop-label">Drop an image here</div>
+    <div class="drop-sub">or <span id="browse-trigger">browse files</span> &nbsp;·&nbsp; PNG, JPG, GIF, WEBP &nbsp;·&nbsp; max 25 MB</div>
+    <input type="file" id="file-input" accept="image/*" />
+  </div>
+
+  <div id="progress-wrap">
+    <div class="progress-label">Uploading…</div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <div id="result-card">
+    <img id="result-preview" class="result-preview" src="" alt="Uploaded image preview" />
+    <div class="result-body">
+      <div class="result-url" id="result-url"></div>
+      <button class="copy-btn" id="copy-btn">Copy link</button>
+    </div>
+  </div>
+
+  <button id="upload-another">↑ Upload another</button>
+</main>
+
+<div id="toast"></div>
+
+<div id="consent-banner" role="dialog" aria-label="Cookie consent">
+  <div class="consent-top">
+    <div class="consent-icon">🍪</div>
+    <div>
+      <div class="consent-title">Before you continue</div>
+      <div class="consent-text">
+        This site uses cookies to remember your preferences. By continuing you agree to our
+        <a href="/legal.html#privacy">Privacy Policy</a>,
+        <a href="/legal.html#tos">Terms of Service</a>, and
+        <a href="/legal.html#disclaimer">Disclaimer</a>.
+      </div>
+    </div>
+  </div>
+  <div class="consent-actions">
+    <button class="btn-decline" id="btn-decline">Decline</button>
+    <button class="btn-accept" id="btn-accept">Accept &amp; Continue</button>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-left"><strong>robles</strong> &nbsp;·&nbsp; images for all!</div>
+  <div class="footer-links">
+    <a href="/legal.html#disclaimer">disclaimer</a>
+    <a href="/legal.html#tos">terms of service</a>
+    <a href="/legal.html#privacy">privacy policy</a>
+  </div>
+</footer>
+
+<script>
+  // ── Consent ──
+  const banner = document.getElementById('consent-banner');
+
+  function setCookie(name, value, days) {
+    const d = new Date();
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+  }
+
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
+  }
+
+  if (!getCookie('consent')) {
+    setTimeout(() => banner.classList.add('visible'), 600);
+  }
+
+  document.getElementById('btn-accept').addEventListener('click', () => {
+    setCookie('consent', 'accepted', 365);
+    banner.style.transform = 'translateX(-50%) translateY(140%)';
+  });
+
+  document.getElementById('btn-decline').addEventListener('click', () => {
+    setCookie('consent', 'declined', 30);
+    banner.style.transform = 'translateX(-50%) translateY(140%)';
+  });
+
+  // ── Upload UI ──
+  const dropZone     = document.getElementById('drop-zone');
+  const fileInput    = document.getElementById('file-input');
+  const browseTrig   = document.getElementById('browse-trigger');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-fill');
+  const resultCard   = document.getElementById('result-card');
+  const resultPreview= document.getElementById('result-preview');
+  const resultUrl    = document.getElementById('result-url');
+  const copyBtn      = document.getElementById('copy-btn');
+  const uploadAnother= document.getElementById('upload-another');
+  const toast        = document.getElementById('toast');
+  let currentUrl = '';
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  browseTrig.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) { showToast('Only image files are allowed', 'error'); return; }
+    if (file.size > 25 * 1024 * 1024) { showToast('File too large (max 25 MB)', 'error'); return; }
+    resultCard.classList.remove('visible');
+    uploadAnother.classList.remove('visible');
+    progressWrap.classList.add('visible');
+    progressFill.style.width = '0%';
+    const formData = new FormData();
+    formData.append('image', file);
+    let fakeProgress = 0;
+    const tick = setInterval(() => { fakeProgress = Math.min(fakeProgress + Math.random() * 15, 85); progressFill.style.width = fakeProgress + '%'; }, 120);
+    fetch('/upload', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => {
+        clearInterval(tick);
+        progressFill.style.width = '100%';
+        if (data.error) { showToast(data.error, 'error'); progressWrap.classList.remove('visible'); return; }
+        setTimeout(() => {
+          progressWrap.classList.remove('visible');
+          const fullUrl = window.location.origin + data.url;
+          currentUrl = fullUrl;
+          resultUrl.textContent = fullUrl;
+          resultPreview.src = data.url;
+          resultCard.classList.add('visible');
+          uploadAnother.classList.add('visible');
+          copyBtn.textContent = 'Copy link';
+          copyBtn.classList.remove('copied');
+        }, 400);
+      })
+      .catch(() => { clearInterval(tick); progressWrap.classList.remove('visible'); showToast('Upload failed — is the server running?', 'error'); });
+  }
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(currentUrl).then(() => {
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      showToast('Link copied to clipboard', 'success');
+      setTimeout(() => { copyBtn.textContent = 'Copy link'; copyBtn.classList.remove('copied'); }, 2500);
+    });
+  });
+
+  uploadAnother.addEventListener('click', () => { resultCard.classList.remove('visible'); uploadAnother.classList.remove('visible'); fileInput.value = ''; currentUrl = ''; });
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.className = 'show ' + type;
+    toastTimer = setTimeout(() => toast.className = '', 3000);
+  }
+</script>
+</body>
+</html>
